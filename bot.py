@@ -425,4 +425,4 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         amount_str = payload.split("_")[2]
         package_map = {
             "50": 50, "100": 100, "500": 500, "1000": 1000,
-            "5000": 5000, "10000": 10000, "20000": 20000, "40000": 40
+            "5000": 5000, "10000": 10000, "20000": 20000, "40000:40000
