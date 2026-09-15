@@ -2,6 +2,8 @@ import os
 import random
 import time
 import logging
+import uuid
+import json
 from flask import Flask
 import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
@@ -31,8 +33,35 @@ USER_DATA_FILE = "users.txt"
 STOCK_FILE = "stok.txt"
 KAMPANYA_SAYAC_FILE = "kampanya_sayac.txt"
 KODLAR_FILE = "aktif_kodlar.txt"
+CUSTOM_CODES_FILE = "custom_codes.json"
 
-# --- KAMPANYA SAYAÇ FONKSİYONLARI ---
+# --- KOD SİSTEMİ FONKSİYONLARI ---
+def load_custom_codes():
+    if not os.path.exists(CUSTOM_CODES_FILE):
+        return {}
+    try:
+        with open(CUSTOM_CODES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_custom_codes(codes_dict):
+    with open(CUSTOM_CODES_FILE, "w", encoding="utf-8") as f:
+        json.dump(codes_dict, f, ensure_ascii=False, indent=4)
+
+def generate_unique_code(product_name):
+    unique_suffix = uuid.uuid4().hex[:6].upper()
+    code = f"CPM-{product_name}-{unique_suffix}"
+    codes = load_custom_codes()
+    while code in codes:
+        unique_suffix = uuid.uuid4().hex[:6].upper()
+        code = f"CPM-{product_name}-{unique_suffix}"
+    
+    codes[code] = {"used": False, "product": product_name}
+    save_custom_codes(codes)
+    return code
+
+# --- KAMPANYA SAYAÇ ---
 def get_campaign_count():
     if not os.path.exists(KAMPANYA_SAYAC_FILE):
         return 0
@@ -159,17 +188,15 @@ async def kod_talep_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
         gecen_sure = simdiki_zaman - last_kod_time
         if gecen_sure < otuz_gun:
             kalan_gun = int((otuz_gun - gecen_sure) / (24 * 60 * 60))
-            msg = f"Bu kampanyadan tekrar yararlanabilmek için {kalan_gun} gün beklemelisin. Her 30 günde bir hakkın yenilenir."
+            msg = f"Bu kampanyadan tekrar yararlanabilmek için {kalan_gun} gün beklemelisin."
             if update.message: await update.message.reply_text(msg)
             elif update.callback_query: await update.callback_query.message.reply_text(msg)
             return
 
     gecen_gun_sayisi = int((simdiki_zaman - kayit_zamani) / (24 * 60 * 60))
-    
     harfler = random.choice(["CPM", "CRP", "BOT", "CAR"])
     sayilar = random.randint(1000, 9999)
     uretilen_kod = f"{harfler}{sayilar}"
-    
     odul_turu = random.choice(["Yıldız", "Carpipuan"])
     
     ozel_gunler = [20, 30, 40, 60, 365, 10000]
@@ -189,11 +216,9 @@ async def kod_talep_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kalan_kot = TOPLAM_LIMIT - (kullanilan_sayi + 1)
     
     mesaj = (
-        f"🎯 **Kodlar bugüne özel eklendi ve 30 gün boyunca geçerli olacak şekilde tanımlandı!**\n\n"
+        f"🎯 **Şanslı Kodun Üretildi!**\n\n"
         f"🔑 Kodun: `{uretilen_kod}`\n"
-        f"🎁 İçindeki Ödül: **{odul_miktari} {odul_turu}**\n"
-        f"⏳ Geçerlilik Süresi: **30 Gün**\n"
-        f"📊 Kalan Genel Kota: {kalan_kot} kişi\n\n"
+        f"🎁 Ödül: **{odul_miktari} {odul_turu}**\n"
         f"Kullanmak için: `/kullan {uretilen_kod}`"
     )
     if update.message:
@@ -205,12 +230,25 @@ async def kodu_aktif_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
     if not args:
-        await update.message.reply_text("Lütfen bir kod giriniz.\nÖrnek kullanım: `/kullan CPM9000`", parse_mode="Markdown")
+        await update.message.reply_text("Lütfen bir kod giriniz.\nÖrnek: `/kullan CPM9000` veya `/kod CPM-50Puan-A3F`", parse_mode="Markdown")
         return
         
-    girilen_kod = args[0].upper()
+    girilen_kod = args[0].strip().upper()
+    
+    # 1. Önce özel ürün kodlarına bak (Yıldız ile satın alım kodları)
+    custom_codes = load_custom_codes()
+    if girilen_kod in custom_codes:
+        if custom_codes[girilen_kod]["used"]:
+            await update.message.reply_text("❌ Bu kod daha önce **kullanılmış**!")
+            return
+        custom_codes[girilen_kod]["used"] = True
+        save_custom_codes(custom_codes)
+        await update.message.reply_text(f"✅ Ürün kodunuz başarıyla onaylandı ve aktifleşti! ({custom_codes[girilen_kod]['product']})")
+        return
+
+    # 2. Şanslı kodlara bak
     if not os.path.exists(KODLAR_FILE):
-        await update.message.reply_text("Geçersiz kod.")
+        await update.message.reply_text("❌ Geçersiz kod.")
         return
         
     satirlar = []
@@ -233,7 +271,7 @@ async def kodu_aktif_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
             satirlar.append(line)
             
     if not bulundu:
-        await update.message.reply_text("❌ Girdiğiniz kod geçersiz, süresi dolmuş veya daha önce kullanılmış.")
+        await update.message.reply_text("❌ Girdiğiniz kod geçersiz veya daha önce kullanılmış.")
         return
         
     with open(KODLAR_FILE, "w", encoding="utf-8") as f:
@@ -241,13 +279,8 @@ async def kodu_aktif_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     tur, miktar = odul_bilgisi
     points, refs, lk, lb, kz = get_user_balance(user.id)
-    
-    if tur == "Carpipuan":
-        update_user_balance_extended(user.id, points + miktar, refs, lk, lb, kz)
-        await update.message.reply_text(f"🎉 Kod başarıyla onaylandı!\nHesabına **{miktar} CarpiPuan** eklendi.", parse_mode="Markdown")
-    else:
-        update_user_balance_extended(user.id, points + miktar, refs, lk, lb, kz)
-        await update.message.reply_text(f"🎉 Kod başarıyla onaylandı!\nHesabınıza **{miktar} Yıldız** değeri tanımlandı.", parse_mode="Markdown")
+    update_user_balance_extended(user.id, points + miktar, refs, lk, lb, kz)
+    await update.message.reply_text(f"🎉 Kod başarıyla onaylandı!\nHesabına **{miktar} {tur}** eklendi.", parse_mode="Markdown")
 
 async def gunluk_bonus_al(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -257,7 +290,7 @@ async def gunluk_bonus_al(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bir_gun = 24 * 60 * 60
     if simdiki_zaman - last_bonus_yildiz < bir_gun:
         kalan = int((bir_gun - (simdiki_zaman - last_bonus_yildiz)) / 3600)
-        msg = f"⏳ Günlük yıldız bonusunu almak için yaklaşık {kalan} saat beklemelisin."
+        msg = f"⏳ Günlük yıldız bonusu için {kalan} saat beklemelisin."
         if update.message: await update.message.reply_text(msg)
         elif update.callback_query: await update.callback_query.message.reply_text(msg)
         return
@@ -265,18 +298,17 @@ async def gunluk_bonus_al(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kazanilan_yildiz = round(random.randint(9, 13) / 10.0, 1)
     update_user_balance_extended(user.id, points, refs, lk, simdiki_zaman, kz)
     
-    msg = f"⭐ Günlük Yıldız Bonusun Yüklendi!\n\nKazanılan: **{kazanilan_yildiz} Yıldız**"
+    msg = f"⭐ Günlük Yıldız Bonusun Yüklendi: **{kazanilan_yildiz} Yıldız**"
     if update.message: await update.message.reply_text(msg, parse_mode="Markdown")
     elif update.callback_query: await update.callback_query.message.reply_text(msg, parse_mode="Markdown")
 
 async def carpipuan_bonus_al(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     kazanilan_puan = round(random.randint(3, 9) / 10.0, 1)
-    
     points, refs, lk, lb, kz = get_user_balance(user.id)
     update_user_balance_extended(user.id, points + kazanilan_puan, refs, lk, lb, kz)
     
-    msg = f"🎁 12 Saatlik CarpiPuan Bonusun Yüklendi!\n\nKazanılan: **{kazanilan_puan} CarpiPuan**"
+    msg = f"🎁 12 Saatlik Bonus Yüklendi: **{kazanilan_puan} CarpiPuan**"
     if update.message: await update.message.reply_text(msg, parse_mode="Markdown")
     elif update.callback_query: await update.callback_query.message.reply_text(msg, parse_mode="Markdown")
 
@@ -300,11 +332,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "invite":
         invite_link = f"https://t.me/{context.bot.username}?start={user.id}"
-        text = (
-            f"👥 **Arkadaşını Davet Et Kazan!**\n\n"
-            f"Aşağıdaki linki arkadaşlarınla paylaş, botu başlattıkları an her biri için **+5 CarpiPuan** kazan!\n\n"
-            f"`{invite_link}`"
-        )
+        text = f"👥 **Davet Et Kazan!**\n\nHer arkadaşın için +5 Puan:\n`{invite_link}`"
         keyboard = [[InlineKeyboardButton("🔙 Ana Menüye Dön", callback_data="main_menu")]]
         await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
@@ -313,11 +341,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "cmd_bonuslar":
         keyboard = [
-            [InlineKeyboardButton("⭐ Günlük Yıldız Al (0.9 - 1.3)", callback_data="claim_star_bonus")],
-            [InlineKeyboardButton("📦 12 Saatlik CarpiPuan Al (0.3 - 0.9)", callback_data="claim_point_bonus")],
+            [InlineKeyboardButton("⭐ Günlük Yıldız Al", callback_data="claim_star_bonus")],
+            [InlineKeyboardButton("📦 12 Saatlik CarpiPuan Al", callback_data="claim_point_bonus")],
             [InlineKeyboardButton("🔙 Ana Menüye Dön", callback_data="main_menu")]
         ]
-        await query.message.edit_text("🎁 **Bonus Toplama Merkezi**\n\nSüresi gelen bonusunu al:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.edit_text("🎁 **Bonus Merkezi**", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data == "claim_star_bonus":
         await gunluk_bonus_al(update, context)
@@ -330,42 +358,38 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "buy_point":
         if points < 15:
-            await query.message.reply_text("❌ Yetersiz CarpiPuan! 15 puanın olmalı veya arkadaş davet etmelisin.")
+            await query.message.reply_text("❌ Yetersiz CarpiPuan! (15 Puan gerekli)")
             return
         stock = load_stock()
         if not stock:
-            await query.message.reply_text("❌ Üzgünüm, şu an stokta hiç hesap kalmadı.")
+            await query.message.reply_text("❌ Stok kalmadı!")
             return
         
         account = stock.pop(0)
         save_stock(stock)
         p_curr, r_curr, lk_curr, lb_curr, kz_curr = get_user_balance(user.id)
         update_user_balance_extended(user.id, p_curr - 15, r_curr, lk_curr, lb_curr, kz_curr)
-        await query.message.reply_text(f"✅ Başarıyla hesap satın aldın!\n\n🔑 **Hesap Bilgisi:**\n`{account}`", parse_mode="Markdown")
+        
+        secret_code = generate_unique_code("1x_Hesap")
+        await query.message.reply_text(f"✅ Hesap satın alındı!\n\n🔑 **Hesap Bilgisi:** `{account}`\n🎁 **Size Özel Tek Kullanımlık Kodunuz:** `{secret_code}`", parse_mode="Markdown")
 
     elif query.data == "buy_star_menu":
         keyboard = [
             [InlineKeyboardButton("⚡ 1 Adet Hesap (15 Yıldız)", callback_data="star_acc_1")],
             [InlineKeyboardButton("⚡ 2 Adet Hesap (30 Yıldız)", callback_data="star_acc_2")],
-            [InlineKeyboardButton("⚡ 3 Adet Hesap (45 Yıldız)", callback_data="star_acc_3")],
-            [InlineKeyboardButton("⚡ 4 Adet Hesap (60 Yıldız)", callback_data="star_acc_4")],
             [InlineKeyboardButton("⚡ 5 Adet Hesap (50 Yıldız - İndirimli)", callback_data="star_acc_5")],
-            [InlineKeyboardButton("⚡ 10 Adet Hesap (100 Yıldız)", callback_data="star_acc_10")],
             [InlineKeyboardButton("🔙 Ana Menüye Dön", callback_data="main_menu")]
         ]
-        await query.message.edit_text("⭐ **Yıldız ile Doğrudan Hesap Alımı**\n*(5 ve üzeri adetlerde adet fiyatı 10 Yıldız'a düşer!)*\n\nAdet seç:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.edit_text("⭐ **Yıldız ile Hesap Alımı**", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data.startswith("star_acc_"):
         count = int(query.data.split("_")[2])
         unit_price = 15 if count < 5 else 10
         total_stars = count * unit_price
-
-        context.user_data["pay_type"] = f"acc_qty_{count}"
-        title = f"{count} Adet CPM1 Hesabı"
         prices = [LabeledPrice(f"{count} Adet Hesap", total_stars)]
         
         await context.bot.send_invoice(
-            chat_id=user.id, title=title, description=f"Doğrudan {count} adet hesap teslimi (Birim: {unit_price} Yıldız)",
+            chat_id=user.id, title=f"{count} Adet Hesap", description=f"{count} adet hesap teslimi",
             payload=f"star_acc_{count}", provider_token=PROVIDER_TOKEN, currency="XTR", prices=prices
         )
 
@@ -377,30 +401,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 1.000 CarpiPuan (750 Yıldız)", callback_data="star_p_1000")],
             [InlineKeyboardButton("📦 5.000 CarpiPuan (3.500 Yıldız)", callback_data="star_p_5000")],
             [InlineKeyboardButton("📦 10.000 CarpiPuan (6.500 Yıldız)", callback_data="star_p_10000")],
-            [InlineKeyboardButton("📦 20.000 CarpiPuan (12.000 Yıldız)", callback_data="star_p_20000")],
             [InlineKeyboardButton("📦 40.000 CarpiPuan (22.000 Yıldız)", callback_data="star_p_40000")],
             [InlineKeyboardButton("🔙 Ana Menüye Dön", callback_data="main_menu")]
         ]
-        await query.message.edit_text("⭐ **Yıldız ile CarpiPuan Satın Al**\n\nBütçene uygun paketi seç:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.edit_text("⭐ **Yıldız ile CarpiPuan Al**", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data.startswith("star_p_"):
         amount = query.data.split("_")[2]
         package_map = {
-            "50": (50, 50),
-            "100": (90, 100),
-            "500": (400, 500),
-            "1000": (750, 1000),
-            "5000": (3500, 5000),
-            "10000": (6500, 10000),
-            "20000": (12000, 20000),
+            "50": (50, 50), 
+            "100": (90, 100), 
+            "500": (400, 500), 
+            "1000": (750, 1000), 
+            "5000": (3500, 5000), 
+            "10000": (6500, 10000), 
+            "20000": (12000, 20000), 
             "40000": (22000, 40000)
         }
         stars, points_to_add = package_map[amount]
-        context.user_data["pay_type"] = f"points_{points_to_add}"
-        
         prices = [LabeledPrice(f"{points_to_add} CarpiPuan", stars)]
+        
         await context.bot.send_invoice(
-            chat_id=user.id, title=f"{points_to_add} CarpiPuan Paketi", description=f"Hesabına {points_to_add} CarpiPuan yüklenir.",
+            chat_id=user.id, title=f"{points_to_add} CarpiPuan", description=f"{points_to_add} CarpiPuan yükleme",
             payload=f"star_p_{amount}", provider_token=PROVIDER_TOKEN, currency="XTR", prices=prices
         )
 
@@ -418,21 +440,17 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
     if payload.startswith("star_acc_"):
         count = int(payload.split("_")[2])
         status_stock = load_stock()
-        
         accounts = []
         for _ in range(count):
             if status_stock:
                 accounts.append(status_stock.pop(0))
             else:
-                accounts.append("Stok eklenecek (Yöneticiyle iletişime geç)")
-                
+                accounts.append("Stok eklenecek")
         save_stock(status_stock)
         
         acc_text = "\n".join([f"`{a}`" for a in accounts])
-        await update.message.reply_text(f"🎉 Ödeme başarılı! İşte hesapların:\n\n{acc_text}", parse_mode="Markdown")
+        secret_code = generate_unique_code(f"{count}x_Hesap")
+        await update.message.reply_text(f"🎉 Ödeme başarılı!\n\n🔑 **Hesaplar:**\n{acc_text}\n\n🎁 **Size Özel Tek Kullanımlık Kodunuz:** `{secret_code}`", parse_mode="Markdown")
 
     elif payload.startswith("star_p_"):
-        amount_str = payload.split("_")[2]
-        package_map = {
-            "50": 50, "100": 100, "500": 500, "1000": 1000,
-            "5000": 5000, "10000": 
+        amount_str = payload.sp
