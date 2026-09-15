@@ -2,8 +2,24 @@ import os
 import random
 import time
 import logging
+from flask import Flask
+import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, PreCheckoutQueryHandler, MessageHandler, filters
+
+# --- RENDER İÇİN WEB SUNUCUSU (KAPANMAYI ÖNLER) ---
+app_flask = Flask('')
+
+@app_flask.route('/')
+def home():
+    return "Bot aktif ve calisiyor!"
+
+def run():
+    app_flask.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = threading.Thread(target=run)
+    t.start()
 
 # Logging ayarları
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -401,16 +417,16 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
 
     if payload.startswith("star_acc_"):
         count = int(payload.split("_")[2])
-        stock = load_stock()
+        status_stock = load_stock()
         
         accounts = []
         for _ in range(count):
-            if stock:
-                accounts.append(stock.pop(0))
+            if status_stock:
+                accounts.append(status_stock.pop(0))
             else:
                 accounts.append("Stok eklenecek (Yöneticiyle iletişime geç)")
                 
-        save_stock(stock)
+        save_stock(status_stock)
         
         acc_text = "\n".join([f"`{a}`" for a in accounts])
         await update.message.reply_text(f"🎉 Ödeme başarılı! İşte hesapların:\n\n{acc_text}", parse_mode="Markdown")
@@ -419,11 +435,4 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         amount_str = payload.split("_")[2]
         package_map = {
             "50": 50, "100": 100, "500": 500, "1000": 1000,
-            "5000": 5000, "10000": 10000, "20000": 20000, "40000": 40000
-        }
-        added_points = package_map[amount_str]
-        update_user_balance_extended(user.id, points + added_points, refs, lk, lb, kz)
-        await update.message.reply_text(f"🎉 Ödeme başarılı! Hesabına **{added_points} CarpiPuan** eklendi.", parse_mode="Markdown")
-
-# --- MAIN ---
-if __name__ =
+            "5000": 5000, "10000": 
