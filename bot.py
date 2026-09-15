@@ -8,7 +8,8 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Callb
 # Logging ayarları
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-TOKEN = os.getenv("BOT_TOKEN", "BOT_TOKEN_BURAYA")
+TOKEN = "8962445060:AAEatnjtKUW66d--dFVdjgGnRqLMN_P7o44"
+
 PROVIDER_TOKEN = ""  # Telegram Stars (XTR) için boş bırakılır
 
 USER_DATA_FILE = "users.txt"
