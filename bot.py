@@ -27,11 +27,11 @@ def save_stock_accounts(accounts):
         for acc in accounts:
             f.write(acc + "\n")
 
-# Ana menü klavyesi
+# Ana menü klavyesi (Yıldızla hesap alma butonu eklendi)
 def get_main_menu():
     keyboard = [
         [InlineKeyboardButton("📦 Hesap Satın Al (15 CarpiPuan)", callback_data="buy_account_points")],
-        [InlineKeyboardButton("⭐ Yıldız ile Hesap Satın Al (Örn: 500 Yıldız)", callback_data="buy_account_stars")],
+        [InlineKeyboardButton("⭐ Yıldız ile Doğrudan Hesap Satın Al", callback_data="buy_account_stars")],
         [InlineKeyboardButton("⭐ Yıldız ile CarpiPuan Satın Al", callback_data="buy_points_menu")],
         [InlineKeyboardButton("👥 Arkadaşını Davet Et (+5 CarpiPuan)", callback_data="ref_link")],
         [InlineKeyboardButton("👤 Profilim & Puan Durumum", callback_data="profile")]
