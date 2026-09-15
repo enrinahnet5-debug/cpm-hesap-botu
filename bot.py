@@ -148,7 +148,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("⚡ 2 Adet Hesap (30 Yıldız)", callback_data="star_acc_2")],
             [InlineKeyboardButton("⚡ 3 Adet Hesap (45 Yıldız)", callback_data="star_acc_3")],
             [InlineKeyboardButton("⚡ 4 Adet Hesap (60 Yıldız)", callback_data="star_acc_4")],
-            [InlineKeyboardButton("⚡ 5 Adet Hesap (50 Yıldız - 10 Yıldız/tane İndirimli)", callback_data="star_acc_5")],
+            [InlineKeyboardButton("⚡ 5 Adet Hesap (50 Yıldız - İndirimli)", callback_data="star_acc_5")],
             [InlineKeyboardButton("⚡ 10 Adet Hesap (100 Yıldız)", callback_data="star_acc_10")],
             [InlineKeyboardButton("🔙 Ana Menüye Dön", callback_data="main_menu")]
         ]
@@ -185,8 +185,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("star_p_"):
         amount = query.data.split("_")[2]
         package_map = {
-            "50": (50, 50), "100": (90, 100), "500": (400, 500), "1000": (750, 1000),
-            "5000": (3500, 5000), "10000": (6500, 10000), "20000": (12000, 20000), "40000": (22000, 40000)
+            "50": (50, 50),
+            "100": (90, 100),
+            "500": (400, 500),
+            "1000": (750, 1000),
+            "5000": (3500, 5000),
+            "10000": (6500, 10000),
+            "20000": (12000, 20000),
+            "40000": (22000, 40000)
         }
         stars, points_to_add = package_map[amount]
         context.user_data["pay_type"] = f"points_{points_to_add}"
@@ -194,7 +200,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prices = [LabeledPrice(f"{points_to_add} CarpiPuan", stars)]
         await context.bot.send_invoice(
             chat_id=user.id, title=f"{points_to_add} CarpiPuan Paketi", description=f"Hesabına {points_to_add} CarpiPuan yüklenir.",
-            payload=f"star_p_{points_to_add}", provider_token=PROVIDER_TOKEN, currency="XTR", prices=prices
+            payload=f"star_p_{amount}", provider_token=PROVIDER_TOKEN, currency="XTR", prices=prices
         )
 
 # --- ÖDEME DOĞRULAMA ---
@@ -211,18 +217,27 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
     if payload.startswith("star_acc_"):
         count = int(payload.split("_")[2])
         stock = load_stock()
-        if len(stock) < count:
-            await update.message.reply_text(f"❌ Ödeme başarılı fakat stokta yeterli hesap yok (Mevcut: {len(stock)}). Yöneticiye bildir.")
-            return
         
-        accounts = [stock.pop(0) for _ in range(count)]
+        # Stok kontrolü kaldırıldı, stokta ne varsa çekilir veya boş döner
+        accounts = []
+        for _ in range(count):
+            if stock:
+                accounts.append(stock.pop(0))
+            else:
+                accounts.append("Stok eklenecek (Yöneticiyle iletişime geç)")
+                
         save_stock(stock)
         
         acc_text = "\n".join([f"`{a}`" for a in accounts])
-        await update.message.reply_text(f"🎉 Ödeme başarılı! İşte {count} adet hesabın:\n\n{acc_text}", parse_mode="Markdown")
+        await update.message.reply_text(f"🎉 Ödeme başarılı! İşte hesapların:\n\n{acc_text}", parse_mode="Markdown")
 
     elif payload.startswith("star_p_"):
-        added_points = int(payload.split("_")[2])
+        amount_str = payload.split("_")[2]
+        package_map = {
+            "50": 50, "100": 100, "500": 500, "1000": 1000,
+            "5000": 5000, "10000": 10000, "20000": 20000, "40000": 40000
+        }
+        added_points = package_map[amount_str]
         update_user_balance(user.id, points + added_points, refs)
         await update.message.reply_text(f"🎉 Ödeme başarılı! Hesabına **{added_points} CarpiPuan** eklendi.", parse_mode="Markdown")
 
