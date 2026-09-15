@@ -9,7 +9,6 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Callb
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 TOKEN = "8962445060:AAEatnjtKUW66d--dFVdjgGnRqLMN_P7o44"
-
 PROVIDER_TOKEN = ""  # Telegram Stars (XTR) için boş bırakılır
 
 USER_DATA_FILE = "users.txt"
@@ -426,5 +425,4 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         amount_str = payload.split("_")[2]
         package_map = {
             "50": 50, "100": 100, "500": 500, "1000": 1000,
-            "5000": 5000, "10000": 10000, "20000": 20000, "40000": 40000
-  
+            "5000": 5000, "10000": 10000, "20000": 20000, "40000": 40
