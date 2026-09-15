@@ -8,7 +8,9 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, PreC
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = "8962445060:AAEatnjtKUW66d--dFVdjgGnRqLMN_P7o44"
+
+
 
 # Bellek tabanlı veritabanı (user_id: {"points": 0, "invited_count": 0})
 user_data_db = {}
