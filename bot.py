@@ -81,11 +81,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     simdiki_zaman = time.time()
     points, refs, last_kod_time, last_bonus_yildiz, kayit_zamani = get_user_balance(user.id)
 
-    # İlk defa kayıt oluyorsa kayıt zamanını setle
     if not os.path.exists(USER_DATA_FILE) or kayit_zamani == 0.0:
         kayit_zamani = simdiki_zaman
 
-    # Referans kontrolü
     if args and args[0].isdigit():
         ref_id = int(args[0])
         if ref_id != user.id and ref_id not in refs:
@@ -125,7 +123,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.callback_query:
         await update.callback_query.message.edit_text(text, reply_markup=reply_markup)
 
-# --- ŞANSLI KOD SİSTEMİ (Özel Gün Çarpanlı ve 30 Gün Uyarılı) ---
+# --- ŞANSLI KOD SİSTEMİ ---
 async def kod_talep_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     simdiki_zaman = time.time()
@@ -150,7 +148,6 @@ async def kod_talep_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif update.callback_query: await update.callback_query.message.reply_text(msg)
             return
 
-    # Kullanıcının sistemdeki üyelik günü hesaplanıyor
     gecen_gun_sayisi = int((simdiki_zaman - kayit_zamani) / (24 * 60 * 60))
     
     harfler = random.choice(["CPM", "CRP", "BOT", "CAR"])
@@ -159,7 +156,6 @@ async def kod_talep_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     odul_turu = random.choice(["Yıldız", "Carpipuan"])
     
-    # Özel gün kontrolü (20, 30, 40, 60, 365, 10000 vb.)
     ozel_gunler = [20, 30, 40, 60, 365, 10000]
     if any(abs(gecen_gun_sayisi - og) <= 1 for og in ozel_gunler):
         secenekler = [round(random.randint(5, 15) / 10.0, 1), random.randint(10, 80)]
@@ -237,7 +233,6 @@ async def kodu_aktif_et(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update_user_balance_extended(user.id, points + miktar, refs, lk, lb, kz)
         await update.message.reply_text(f"🎉 Kod başarıyla onaylandı!\nHesabınıza **{miktar} Yıldız** değeri tanımlandı.", parse_mode="Markdown")
 
-# --- GÜNLÜK YILDIZ VE 12 SAATLİK CARPİPUAN BONUSLARI ---
 async def gunluk_bonus_al(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     simdiki_zaman = time.time()
@@ -269,7 +264,6 @@ async def carpipuan_bonus_al(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if update.message: await update.message.reply_text(msg, parse_mode="Markdown")
     elif update.callback_query: await update.callback_query.message.reply_text(msg, parse_mode="Markdown")
 
-# --- BUTON YÖNETİCİSİ ---
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -425,4 +419,11 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         amount_str = payload.split("_")[2]
         package_map = {
             "50": 50, "100": 100, "500": 500, "1000": 1000,
-            "5000": 5000, "10000": 10000, "20000": 20000, "40000:40000
+            "5000": 5000, "10000": 10000, "20000": 20000, "40000": 40000
+        }
+        added_points = package_map[amount_str]
+        update_user_balance_extended(user.id, points + added_points, refs, lk, lb, kz)
+        await update.message.reply_text(f"🎉 Ödeme başarılı! Hesabına **{added_points} CarpiPuan** eklendi.", parse_mode="Markdown")
+
+# --- MAIN ---
+if __name__ =
