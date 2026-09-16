@@ -33,7 +33,8 @@ def keep_alive():
 
 ADMIN_IDS = [8520025523]
 BOT_USERNAME = "Cpm1Hesap_Satis_bot"
-TOKEN = "8962445060:AAFypELLnBZ-1NDdU_4gUeIjNBZL-gWORTE"
+# BotFather'dan aldığın yeni taze token buraya işlendi:
+TOKEN = "8962445060:AAGYy3y-kvPQ0rYYBjKcDamUVQ9XTp_9kJY"
 
 DB_FILE = "veritabani.json"
 
@@ -491,7 +492,4 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             description=f"{puan_miktari:,} Çarpıpuan Yüklemesi",
             payload=f"apex_yukle_{puan_miktari}",
             currency="XTR",
-            prices=[LabeledPrice("Çarpıpuan", yildiz_fiyati)],
-        )
-
-    elif q
+            prices=[LabeledP
