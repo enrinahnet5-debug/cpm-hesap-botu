@@ -496,3 +496,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "gunluk":
         await query.answer()
+if __name__ == '__main__':
+    t = threading.Thread(target=run)
+    t.start()
+    application.run_polling()
+    
