@@ -16,15 +16,12 @@ from telegram.ext import (
     filters,
 )
 
+# Flask Keep-Alive Sunucusu (Railway / Render uyumlu)
 app = Flask(__name__)
-
-ADMIN_IDS = [8520025523]
-BOT_USERNAME = "cpm1_vip_satis_bot"
-TOKEN = os.environ.get("BOT_TOKEN", "8868089301:AAGUrcNlv3j8e21ZdcGA9sBrNxFLDNckVBU")
 
 @app.route("/")
 def home():
-    return "CPM1 VIP Mağaza ApexPuan Botu Aktif!"
+    return "CPM1 VIP Mağaza Aktif ve Çalışıyor!"
 
 def run():
     port = int(os.environ.get('PORT', 8080))
@@ -33,6 +30,10 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
+
+ADMIN_IDS = [8520025523]
+BOT_USERNAME = "Cpm1Hesap_Satis_bot"
+TOKEN = "8962445060:AAFypELLnBZ-1NDdU_4gUeIjNBZL-gWORTE"
 
 DB_FILE = "veritabani.json"
 
@@ -173,6 +174,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "used_promos": [],
             "vip_bitis": 0,
         }
+        if args and args[0].startswith("ref_"):
+            try:
+                ref_id_str = args[0].split("_")[1]
+                if ref_id_str != user_id_str and ref_id_str in KULLANICILAR:
+                    if not KULLANICILAR[user_id_str].get("davet_edildi", False):
+                        KULLANICILAR[user_id_str]["davet_edildi"] = True
+                        KULLANICILAR[ref_id_str]["carpipuan"] = round(
+                            KULLANICILAR[ref_id_str]["carpipuan"] + 50.0, 1
+                        )
+                        KULLANICILAR[ref_id_str]["davet_sayisi"] = (
+                            KULLANICILAR[ref_id_str].get("davet_sayisi", 0) + 1
+                        )
+                        veri_kaydet()
+                        try:
+                            await context.bot.send_message(
+                                chat_id=int(ref_id_str),
+                                text="🎉 Tebrikler reis! Davet ettiğin kullanıcı botu başlattı ve hesabına +50 ApexPuan eklendi!",
+                            )
+                        except Exception:
+                            pass
+            except Exception:
+                pass
         veri_kaydet()
 
     stok_adet = len(stok_oku())
@@ -473,31 +496,3 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "gunluk":
         await query.answer()
-        simdi = time.time()
-        if simdi - user_data["son_gunluk"] < 86400:
-            keyboard = [[InlineKeyboardButton("🔙 Menü", callback_data="ana_menu")]]
-            await query.edit_message_text(
-                "⏳ Günlük ödülü zaten aldın! 24 saatte bir alabilirsin.",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-            )
-            return
-
-        user_data["son_gunluk"] = simdi
-        if user_data.get("vip_bitis", 0) > simdi:
-            kazanilan = float(random.randint(5, 30))
-            vip_mesaj = f"👑 VIP ayrıcalığıyla ekstra ödül kazandın!"
-        else:
-            kazanilan = float(random.randint(1, 10))
-            vip_mesaj = ""
-
-        user_data["carpipuan"] = round(user_data["carpipuan"] + kazanilan, 1)
-        veri_kaydet()
-        keyboard = [[InlineKeyboardButton("🔙 Menü", callback_data="ana_menu")]]
-        await query.edit_message_text(
-            f"🎁 Günlük Ödülün Alındı!\n\n⭐ Kazanılan: +{kazanilan} ApexPuan\n{vip_mesaj}\n\n⭐ Toplam Puanın: +{user_data['carpipuan']}",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
-
-    elif query.data == "liderlik":
-        await query.answer()
-        sirali 
