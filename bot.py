@@ -16,7 +16,7 @@ from telegram.ext import (
     filters,
 )
 
-# Flask Keep-Alive Sunucusu (Railway / Render uyumlu)
+# Flask Keep-Alive Sunucusu
 app = Flask(__name__)
 
 @app.route("/")
@@ -29,6 +29,7 @@ def run():
 
 def keep_alive():
     t = threading.Thread(target=run)
+    t.daemon = True
     t.start()
 
 ADMIN_IDS = [8520025523]
@@ -494,4 +495,4 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             prices=[LabeledPrice("Çarpıpuan", yildiz_fiyati)],
         )
 
-    elif q
+    elif query.d
