@@ -18,7 +18,13 @@ logging.basicConfig(
 
 BOT_TOKEN = "7989564394:AAF7WfIynM3x8IGRtITdYyv21HmKRNf7x-c"
 ADMIN_ID = 0 
-
+# vip.txt dosyasından stokları otomatik yükle
+try:
+    with open("vip.txt", "r", encoding="utf-8") as f:
+        STOCKS["vip"] = [line.strip() for line in f if line.strip()]
+except FileNotFoundError:
+    pass
+    
 user_data_store = {}
 STOCKS = {"random": [], "coin30k": [], "vip": []}
 
