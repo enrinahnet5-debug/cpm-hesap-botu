@@ -17,7 +17,7 @@ logging.basicConfig(
 )
 
 BOT_TOKEN = "7989564394:AAF7WfIynM3x8IGRtITdYyv21HmKRNf7x-c"
-ADMIN_ID = 0 
+ADMIN_ID = 8520025523  # Kendi Telegram ID'n başarıyla eklendi!
 
 user_data_store = {}
 STOCKS = {"random": [], "coin30k": [], "vip": []}
@@ -95,7 +95,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await start(update, context)
 
-    # --- 1. PROMO KOD OLUŞTURUP VERME ---
     elif data == "get_promo_code":
         if user_id in PROMO_SYSTEM["claimed_users"]:
             await query.answer("❌ Zaten bir promo kod aldın!", show_alert=True)
@@ -105,7 +104,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("❌ Üzgünüm, stok tükendi!", show_alert=True)
             return
 
-        # Stok düş ve benzersiz kod üret
         PROMO_SYSTEM["stock"] -= 1
         PROMO_SYSTEM["claimed_users"].append(user_id)
         
@@ -127,7 +125,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await start(update, context)
 
-    # --- 2. PROMO KOD KULLANMA BUTONU ---
     elif data == "use_code":
         await query.answer()
         u = get_user(user_id)
@@ -139,7 +136,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
-    # --- DİĞER BUTONLAR ---
     elif data == "wheel_ap_info":
         await query.answer()
         keyboard = [
@@ -317,7 +313,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Ana Menü", callback_data="main_menu")]]
         await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
-# --- PROMO KOD METİN DİNLENMESİ (KULLANMA SÜRECİ) ---
 async def handle_text_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     u = get_user(user_id)
@@ -343,9 +338,10 @@ async def handle_text_messages(update: Update, context: ContextTypes.DEFAULT_TYP
         else:
             await update.message.reply_text("❌ **Geçersiz promo kod!**", parse_mode="Markdown")
 
-# --- ADMIN KOD STOĞU GÜNCELLEME KOMUTU (/promo_stok 960) ---
 async def reset_promo_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if ADMIN_ID != 0 and update.effective_user.id != ADMIN_ID:
+    # GÜVENLİK KONTROLÜ: Sadece sen kullanabilirsin!
+    if ADMIN_ID == 0 or update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("❌ Bu komutu kullanmaya yetkin yok!")
         return
 
     try:
@@ -392,7 +388,9 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(f"✅ **Ödeme Başarılı!**\n\n🎉 Satın aldığınız hesaplar:\n{acc_text}", parse_mode="Markdown")
 
 async def add_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if ADMIN_ID != 0 and update.effective_user.id != ADMIN_ID:
+    # GÜVENLİK KONTROLÜ: Sadece sen kullanabilirsin!
+    if ADMIN_ID == 0 or update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("❌ Bu komutu kullanmaya yetkin yok!")
         return
     try:
         args = context.args
@@ -421,4 +419,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-            
+        
