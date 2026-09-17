@@ -416,14 +416,12 @@ def main():
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_messages))
-    app.add_handler(MessageHandler(filters.DOCUMENT, handle_document))
-    
+
     app.run_polling()
 
 if __name__ == "__main__":
-    
     main()
-    async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+     async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if ADMIN_ID != 0 and update.effective_user.id != ADMIN_ID:
         return
     
@@ -431,7 +429,7 @@ if __name__ == "__main__":
     caption = update.message.caption
     
     if not caption or caption not in STOCKS:
-        await update.message.reply_text("❌ Dosya gönderirken açıklama (caption) kısmına kategori adını yazmalısın:\nÖrnek kategoriler: `random`, `coin30k`, `vip`", parse_mode="Markdown")
+        await update.message.reply_text("❌ Dosya gönderirken açıklama (caption) kısmına kategori adını yazmalısın:\nÖrnek: `random`, `coin30k`, `vip`", parse_mode="Markdown")
         return
         
     try:
@@ -448,5 +446,3 @@ if __name__ == "__main__":
             await update.message.reply_text("❌ Dosya boş veya okunamadı!")
     except Exception as e:
         await update.message.reply_text(f"❌ Bir hata oluştu: {e}")
-        
-    
