@@ -416,9 +416,37 @@ def main():
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_messages))
-
+    app.add_handler(MessageHandler(filters.DOCUMENT, handle_document))
+    
     app.run_polling()
 
 if __name__ == "__main__":
+    
     main()
+    async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if ADMIN_ID != 0 and update.effective_user.id != ADMIN_ID:
+        return
+    
+    document = update.message.document
+    caption = update.message.caption
+    
+    if not caption or caption not in STOCKS:
+        await update.message.reply_text("❌ Dosya gönderirken açıklama (caption) kısmına kategori adını yazmalısın:\nÖrnek kategoriler: `random`, `coin30k`, `vip`", parse_mode="Markdown")
+        return
         
+    try:
+        file = await context.bot.get_file(document.file_id)
+        file_bytes = await file.download_as_bytearray()
+        content = file_bytes.decode('utf-8')
+        
+        accounts = [line.strip() for line in content.splitlines() if line.strip()]
+        
+        if accounts:
+            STOCKS[caption].extend(accounts)
+            await update.message.reply_text(f"✅ Dosyadan **{caption}** kategorisine **{len(accounts)}** adet stok eklendi!")
+        else:
+            await update.message.reply_text("❌ Dosya boş veya okunamadı!")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Bir hata oluştu: {e}")
+        
+    
